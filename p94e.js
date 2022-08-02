@@ -198,6 +198,19 @@ class Game {
     this.app.view.style.width  = `${canvasWidth}px`;
     this.app.view.style.height = `${canvasHeight}px`;
   }
+  //ContainerやGraphicsからテクスチャーに変換する(サイズも指定できる)
+  createTexture(obj, x, y, w, h){
+    //RenderTexture.createが原点0からの幅高さを取るため座標を一時的にマイナスに動かす
+    const obj_x = obj.x;
+    const obj_y = obj.y;
+    obj.x = -x;
+    obj.y = -y;
+    let texture = PIXI.RenderTexture.create({width: w, height: h});
+    this.app.renderer.render(obj, texture);
+    obj.x = obj_x;
+    obj.y = obj_y;
+    return texture;
+  }
 }
 /*********************************
  * PIXI.Containerにupdate機能を追加
@@ -232,6 +245,10 @@ class Container extends PIXI.Container {
     if(obj.isUpdateObject){//フラグを持っていれば登録
       this.registerUpdatingObject(obj);
     }
+  }
+  removeChild(obj){//取り除く処理
+    super.removeChild(obj);
+    obj.isDestroyed = true;//破壊と同じにした
   }
   destroy() {
     super.destroy();
@@ -275,6 +292,10 @@ class Sprite extends PIXI.Sprite {
     if(obj.isUpdateObject){//フラグを持っていれば登録
       this.registerUpdatingObject(obj);
     }
+  }
+  removeChild(obj){//取り除く処理
+    super.removeChild(obj);
+    obj.isDestroyed = true;//破壊と同じにした
   }
   destroy() {
     super.destroy();
@@ -335,6 +356,96 @@ class Sprite extends PIXI.Sprite {
     super.update(delta);
   }
 }
+
+/***********************************************
+ * Graphicsにupdate機能追加
+ * いくつかの図形をすぐかけるようにした
+ ***********************************************/
+class Graphics extends PIXI.Graphics {
+  constructor(){
+    super();
+    this.isUpdateObject = true;
+    this.isDestroyed = false;
+    this.age = 0; 
+  }
+  destroy() {
+    super.destroy();
+    this.isDestroyed = true;
+  }
+  update(delta){
+    this.age++;
+  }
+  line(x, y, x2, y2, thickness, color){
+    this.lineStyle(thickness, color);
+    this.moveTo(x, y);
+    this.lineTo(x2, y2);
+    this.lineStyle();//解除(他のにも影響がでるため) 
+  }
+  rectFill(x, y, w, h, color){
+    this.beginFill(color);
+    this.drawRect(x, y, w, h);
+    this.endFill();
+  }
+  rect(x, y, w, h, thickness, color){
+    this.lineStyle(thickness, color, 1, 0);
+    this.drawRect(x, y, w, h);
+    this.lineStyle();
+  }
+  circFill(x, y, radius, color){
+    this.beginFill(color);
+    this.drawCircle(x, y, radius);
+    this.endFill();
+  }
+  circ(x, y, radius, thickness, color){
+    this.lineStyle(thickness, color, 1, 0);
+    this.drawCircle(x, y, radius);
+    this.lineStyle();
+  }
+  //星型または正多角形のデータ計算用
+  makeStarData(x, y, points, outerRadius, innerRadius){
+    if(points < 3){//3未満は空の配列を返す(何も表示されない)
+      return [];
+    }
+    let step = (Math.PI * 2) / points;//角度
+    let halfStep = step / 2;
+    const data = [];
+    let dx, dy;
+
+    const halfPI = Math.PI/2;//起点を90度ずらしたいので
+    for (let n = 1; n <= points; ++n) {
+      if(innerRadius){
+        dx = x + Math.cos(step * n - halfStep - halfPI) * innerRadius;
+        dy = y + Math.sin(step * n - halfStep - halfPI) * innerRadius;
+        data.push(dx, dy);
+      }      
+      dx = x + Math.cos(step * n - halfPI) * outerRadius;
+      dy = y + Math.sin(step * n - halfPI) * outerRadius;
+      data.push(dx, dy);
+    }
+    return data;
+  }
+  starFill(x, y, points, outerRadius, innerRadius, color){
+    this.beginFill(color);
+    this.drawPolygon(this.makeStarData(x, y, points, outerRadius, innerRadius));
+    this.endFill();
+  }
+  star(x, y, points, outerRadius, innerRadius, thickness, color){
+    this.lineStyle(thickness, color, 1, 0);
+    this.drawPolygon(this.makeStarData(x, y, points, outerRadius, innerRadius));
+    this.lineStyle();
+  }
+  regPolyFill(x, y, points, radius, color){
+    this.beginFill(color);
+    this.drawPolygon(this.makeStarData(x, y, points, radius));
+    this.endFill();
+  }
+  regPoly(x, y, points, radius, thickness, color){
+    this.lineStyle(thickness, color, 1, 0);
+    this.drawPolygon(this.makeStarData(x, y, points, radius));
+    this.lineStyle();
+  }
+}
+
 
 /***********************************************
  * 開始時のロード画面

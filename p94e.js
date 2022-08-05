@@ -198,19 +198,6 @@ class Game {
     this.app.view.style.width  = `${canvasWidth}px`;
     this.app.view.style.height = `${canvasHeight}px`;
   }
-  //ContainerやGraphicsからテクスチャーに変換する(サイズも指定できる)
-  createTexture(obj, x, y, w, h){
-    //RenderTexture.createが原点0からの幅高さを取るため座標を一時的にマイナスに動かす
-    const obj_x = obj.x;
-    const obj_y = obj.y;
-    obj.x = -x;
-    obj.y = -y;
-    let texture = PIXI.RenderTexture.create({width: w, height: h});
-    this.app.renderer.render(obj, texture);
-    obj.x = obj_x;
-    obj.y = obj_y;
-    return texture;
-  }
 }
 /*********************************
  * PIXI.Containerにupdate機能を追加
